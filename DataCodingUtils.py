@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import Union
+from typing import Union, Iterable
 
 
 def prep_data_for_conditional_survival(
@@ -17,8 +17,6 @@ def prep_data_for_conditional_survival(
         NOTE: all variables should be either continuous or dummy variables
     source_table_survival_column: str
         name of time to event column
-    source_table_event_column: str
-        name of "event" column -- 1 means dead, 0 means censored
     time_passed: Union[int,float]
         time that has passed since start of study period
 
@@ -42,50 +40,65 @@ def prep_data_for_conditional_survival(
     return source_table_slice
 
 
-def get_dummies_with_nan_preservation(pd_df, verbose=True):
+def get_dummies_with_nan_preservation(
+        df, categorical_columns=None, verbose=False
+):
     """Converts df to dummy
+    
     Arguments
     ----------
-        pd_df: pd.DataFrame
+        df: pd.DataFrame
+        categorical_columns: Iterable
+        verbose: bool
 
     Returns
     -------
     pd.DataFrame
         pandas dataframe with dummy variables
     """
+    if categorical_columns is not None:
+        non_categorical_columns = [
+            c for c in df.columns if c not in categorical_columns
+        ]
+    else:
+        categorical_columns = list(df.columns)
+        non_categorical_columns = []
 
-    # get column names in original DF
-    colnames_original = list(pd_df.columns)
+    # first non-categorical, then dummied categorical
+    df = pd.concat(
+        [
+            df.loc[:, non_categorical_columns],
+            pd.get_dummies(df.loc[:, categorical_columns], dummy_na=True),
+        ],
+        axis=1
+    )
 
-    # convert to dummies, making sure to also note which values are NA
-    pd_df = pd.get_dummies(pd_df, dummy_na=True)
+    for colname in categorical_columns:
 
-    for colname in colnames_original:
-
-        # get corresponding cummy column names
+        # get corresponding dummy column names
         # eg GRADE_Moderately differentiated; Grade II', GRADE_Well, GRADE_nan
         dummy_colnames = [
             j
-            for j in pd_df.columns
+            for j in df.columns
             if ((j.startswith(colname + "_")) and not (j.endswith("_nan")))
         ]
 
         # get nan indices
         nan_colname = colname + "_nan"
 
-        if nan_colname in pd_df.columns:
+        if nan_colname in df.columns:
 
             if verbose:
                 print("Preserving nans for ", colname)
 
-            nanidxs = list(pd_df.loc[pd_df[nan_colname] == 1, :].index)
+            nanidxs = list(df.loc[df[nan_colname] == 1, :].index)
 
             # for every dummy column, make sure the original
             # nan values are preserved
             for dummy_colname in dummy_colnames:
-                pd_df.loc[nanidxs, dummy_colname] = np.nan
+                df.loc[nanidxs, dummy_colname] = np.nan
 
             # remove nan column
-            pd_df.drop(nan_colname, axis=1, inplace=True)
+            df.drop(nan_colname, axis=1, inplace=True)
 
-    return pd_df
+    return df
