@@ -40,6 +40,7 @@ def conditional_cox(
         name of "event" column -- 1 means dead, 0 means censored
     time_passed: Union[int,float]
         time that has passed since start of study period
+    verbose: bool
 
     Returns
     -------
@@ -51,10 +52,9 @@ def conditional_cox(
 
     # Prep for conditional survival
     source_table_slice = prep_data_for_conditional_survival(
-        source_table,
-        source_table_survival_column,
-        source_table_event_column,
-        time_passed,
+        source_table=source_table,
+        source_table_survival_column=source_table_survival_column,
+        time_passed=time_passed,
     )
     # now fit model
     cph.fit(
@@ -66,7 +66,7 @@ def conditional_cox(
     return cph
 
 
-def conditional_cox_CV(
+def conditional_cox_cross_validation(
     source_table,
     source_table_survival_column,
     source_table_event_column,
@@ -98,9 +98,8 @@ def conditional_cox_CV(
     # Prep for conditional survival
     source_table_slice = prep_data_for_conditional_survival(
         source_table,
-        source_table_survival_column,
-        source_table_event_column,
-        time_passed,
+        source_table_survival_column=source_table_survival_column,
+        time_passed=time_passed,
     )
     # do cross validation
     scores = k_fold_cross_validation(
@@ -173,7 +172,7 @@ def get_univariable_model(
         source_table_slice = data_frame.loc[:, [varname] + [durationstr, outcome_str]]
 
         # testing accuracy (cross validation)
-        cv_results = conditional_cox_CV(
+        cv_results = conditional_cox_cross_validation(
             source_table=source_table_slice,
             source_table_survival_column=durationstr,
             source_table_event_column=outcome_str,
@@ -248,7 +247,7 @@ def get_multivariable_model(
 
     if K > 0:
         # testing accuracy (cross validation)
-        cv_results = conditional_cox_CV(
+        cv_results = conditional_cox_cross_validation(
             source_table=source_table_slice,
             source_table_survival_column=durationstr,
             source_table_event_column=outcome_str,
