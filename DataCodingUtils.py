@@ -1,25 +1,51 @@
 import pandas as pd
 import numpy as np
-from typing import Union, Iterable
+from typing import Union, Iterable, Dict
 
 
-def simplify_categorical_variables(df, relevant_prefixes_per_column):
+def simplify_categorical_variables(df, prefixes_per_column):
     """Simplify categorical variables (details below).
 
-    Say we have a categorical variable for cancer stage. The values can be
+    Say we have a categorical column 'Stage' for cancer stage, with values like
     'Stage IA', 'Stage IB', 'Stage IIAi', and so on. But we only care about
-    the
+    the coarse stage (I, II, III, IV), then we could use this function as
+    outlined in the example below.
 
     Parameters
     ----------
-    df
-    relevant_prefixes_per_column
+    df: pd.DataFrame
+    prefixes_per_column: Dict[str,Iterable]
+        Each dict index is the name of a column we want to code, while values
+        are prefixes to be grouped together. IMPORTANT NOTE: the order matters!
+        Make sure to provide the most specific strings first. For example,
+        for stage, order should be 'StageIII` -> 'StageII' -> 'StageI'. In
+        other words, if one prefix is a subset of another, it should come
+        LAST.
 
     Returns
     -------
 
+    Examples
+    --------
+        >>> df = simplify_categorical_variables(
+        >>>     df, prefixes_per_column={"Stage": ["IV", "III", "II", "I"]}
+        >>> )
     """
-    pass
+
+    def truncate(value, pfxs):
+        if not isinstance(value, str):
+            return value
+
+        for pfx in pfxs:
+            if value.startswith(pfx):
+                return pfx
+
+    for colname, prefixes in prefixes_per_column.items():
+        df.loc[:, colname] = df.loc[:, colname].apply(
+            lambda x: truncate(x, prefixes)
+        )
+
+    return df
 
 
 def get_dummies_with_nan_preservation(df, categorical_columns=None):
@@ -132,7 +158,7 @@ def combine_vars(
 
     Arguments
     ---------
-    df: DataFrame
+    df: pd.DataFrame
         dataframe containing data
     colnames: list
         names of columns to combine
@@ -143,7 +169,7 @@ def combine_vars(
 
     Returns
     -------
-    DataFrame
+    pd.DataFrame
         modified dataframe
     """
     var_names = []
