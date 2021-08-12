@@ -3,9 +3,26 @@ import numpy as np
 from typing import Union, Iterable
 
 
-def get_dummies_with_nan_preservation(
-        df, categorical_columns=None, verbose=False
-):
+def simplify_categorical_variables(df, relevant_prefixes_per_column):
+    """Simplify categorical variables (details below).
+
+    Say we have a categorical variable for cancer stage. The values can be
+    'Stage IA', 'Stage IB', 'Stage IIAi', and so on. But we only care about
+    the
+
+    Parameters
+    ----------
+    df
+    relevant_prefixes_per_column
+
+    Returns
+    -------
+
+    """
+    pass
+
+
+def get_dummies_with_nan_preservation(df, categorical_columns=None):
     """Converts df to dummy
     
     Arguments
@@ -50,9 +67,6 @@ def get_dummies_with_nan_preservation(
         nan_colname = colname + "_nan"
 
         if nan_colname in df.columns:
-
-            if verbose:
-                print("Preserving nans for ", colname)
 
             nanidxs = list(df.loc[df[nan_colname] == 1, :].index)
 
@@ -102,3 +116,61 @@ def prep_data_for_conditional_survival(
     source_table_slice = source_table_slice.dropna()
 
     return source_table_slice
+
+
+def combine_vars(
+    df,
+    colnames,
+    basestring,
+    counter_basestrings,
+    newcolname=None,
+    operator_type="OR",
+    drop=True,
+):
+    """
+    Combine binary variables.
+
+    Arguments
+    ---------
+    df: DataFrame
+        dataframe containing data
+    colnames: list
+        names of columns to combine
+    basestring: str
+        string common to all variables being combined
+    counter_basestrings: tuple
+        strings NOT present in variable names
+
+    Returns
+    -------
+    DataFrame
+        modified dataframe
+    """
+    var_names = []
+    var_idxs = []
+    for i, j in enumerate(colnames):
+
+        counterstring_is_present = [cs in j for cs in counter_basestrings]
+
+        if (basestring in j) and (True not in counterstring_is_present):
+            var_names.append(j)
+            var_idxs.append(i)
+    new_var = df.values[:, var_idxs]
+
+    if operator_type == "OR":
+        new_var = 0 + (np.sum(new_var, axis=1) > 0)
+    elif operator_type == "AND":
+        new_var = 0 + (np.sum(new_var, axis=1) == new_var.shape[1])
+    else:
+        raise ValueError("Unknown operator_type")
+
+    if drop:
+        for varname in var_names:
+            df = df.drop(varname, axis=1)
+
+    if newcolname is not None:
+        df[newcolname] = new_var
+    else:
+        df[basestring] = new_var
+
+    return df
