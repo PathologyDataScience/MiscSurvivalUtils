@@ -48,14 +48,13 @@ def simplify_categorical_variables(df, prefixes_per_column):
     return df
 
 
-def get_dummies_with_nan_preservation(df, categorical_columns=None):
+def get_dummies_with_nan_preservation(data, categorical_columns=None):
     """Converts df to dummy
-    
+
     Arguments
     ----------
-        df: pd.DataFrame
+        data: pd.DataFrame
         categorical_columns: Iterable
-        verbose: bool
 
     Returns
     -------
@@ -64,17 +63,17 @@ def get_dummies_with_nan_preservation(df, categorical_columns=None):
     """
     if categorical_columns is not None:
         non_categorical_columns = [
-            c for c in df.columns if c not in categorical_columns
+            c for c in data.columns if c not in categorical_columns
         ]
     else:
-        categorical_columns = list(df.columns)
+        categorical_columns = list(data.columns)
         non_categorical_columns = []
 
     # first non-categorical, then dummied categorical
     df = pd.concat(
         [
-            df.loc[:, non_categorical_columns],
-            pd.get_dummies(df.loc[:, categorical_columns], dummy_na=True),
+            data.loc[:, non_categorical_columns],
+            pd.get_dummies(data.loc[:, categorical_columns], dummy_na=True),
         ],
         axis=1
     )
