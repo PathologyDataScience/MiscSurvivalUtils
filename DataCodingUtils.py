@@ -48,19 +48,28 @@ def simplify_categorical_variables(df, prefixes_per_column):
     return df
 
 
-def get_dummies_with_nan_preservation(data, categorical_columns=None):
+def get_dummies_with_nan_preservation(
+        data, categorical_columns=None, stringify=False
+):
     """Converts df to dummy
 
     Arguments
     ----------
         data: pd.DataFrame
-        categorical_columns: Iterable
+        categorical_columns: Iterable, list of categorical column names
+        stringify: Boolean, convery all categorical values to strings?
 
     Returns
     -------
     pd.DataFrame
         pandas dataframe with dummy variables
     """
+
+    def _stringify(x):
+        if isinstance(x, float) and np.isfinite(x):
+            x = int(x)
+        return str(x)
+
     if categorical_columns is not None:
         non_categorical_columns = [
             c for c in data.columns if c not in categorical_columns
@@ -69,11 +78,19 @@ def get_dummies_with_nan_preservation(data, categorical_columns=None):
         categorical_columns = list(data.columns)
         non_categorical_columns = []
 
+    # for dummification, categories should ideally be strings!
+    if stringify:
+        only_categoricals = data.loc[:, categorical_columns].applymap(
+            lambda x: _stringify(x)
+        )
+    else:
+        only_categoricals = data.loc[:, categorical_columns]
+
     # first non-categorical, then dummied categorical
     df = pd.concat(
         [
             data.loc[:, non_categorical_columns],
-            pd.get_dummies(data.loc[:, categorical_columns], dummy_na=True),
+            pd.get_dummies(only_categoricals, dummy_na=True),
         ],
         axis=1
     )
@@ -93,7 +110,8 @@ def get_dummies_with_nan_preservation(data, categorical_columns=None):
 
         if nan_colname in df.columns:
 
-            nanidxs = list(df.loc[df[nan_colname] == 1, :].index)
+            keep = df.loc[:, [nan_colname]].iloc[:, 0] == 1
+            nanidxs = list(df.loc[keep, :].index)
 
             # for every dummy column, make sure the original
             # nan values are preserved
